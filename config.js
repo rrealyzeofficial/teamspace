@@ -4,6 +4,6 @@
 // TUYỆT ĐỐI không đặt service_role key ở đây.
 
 window.TEAM_SUPABASE = {
-  url: "https://kufpbfomibcxyrghknrv.supabase.co",
-  key: "sb_publishable_HiQ1258YmSzj9MZnNTlr-A_RiswJS-f"
+  url: "https://cryyraymtppuzxqeesbo.supabase.co",
+  key: "sb_publishable_dlDZqyPQT4HZzvC6GU_oLg_uyiLsdeM"
 };
