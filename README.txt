@@ -138,3 +138,12 @@ Khi muốn candidate thật sự vào workspace:
 3. Link auth_user_id giống các member khác.
 
 Không để client tự tạo Auth user vì thao tác admin cần secret/service role.
+
+
+V2.1 FIX
+--------
+- Sửa lỗi web vẫn báo chưa cấu hình dù đã điền Supabase.
+- Hỗ trợ key tên: key / publishableKey / anonKey / supabaseKey.
+- Hỗ trợ URL tên: url / supabaseUrl.
+- Thêm cache-busting ?v=2.1 cho config.js và app.js.
+- Nếu vẫn lỗi: Ctrl + F5 để xóa cache.

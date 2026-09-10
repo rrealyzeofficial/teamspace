@@ -1,9 +1,26 @@
-const CFG = window.TEAM_SUPABASE || {};
-const configured =
-  CFG.url &&
-  CFG.key &&
-  !CFG.url.includes("YOUR_SUPABASE") &&
-  !CFG.key.includes("YOUR_SUPABASE");
+const RAW_CFG = window.TEAM_SUPABASE || {};
+const CFG = {
+  url: String(
+    RAW_CFG.url ||
+    RAW_CFG.supabaseUrl ||
+    RAW_CFG.SUPABASE_URL ||
+    ""
+  ).trim(),
+  key: String(
+    RAW_CFG.key ||
+    RAW_CFG.publishableKey ||
+    RAW_CFG.anonKey ||
+    RAW_CFG.supabaseKey ||
+    RAW_CFG.SUPABASE_KEY ||
+    ""
+  ).trim()
+};
+
+const configMissing = [];
+if (!CFG.url || CFG.url.includes("YOUR_SUPABASE")) configMissing.push("Project URL");
+if (!CFG.key || CFG.key.includes("YOUR_SUPABASE")) configMissing.push("Publishable/Anon Key");
+
+const configured = configMissing.length === 0;
 
 const $ = (id) => document.getElementById(id);
 const loginScreen = $("loginScreen");
@@ -187,6 +204,17 @@ async function boot(){
   if(!configured){
     loginScreen.classList.add("hidden");
     configScreen.classList.remove("hidden");
+
+    const card = configScreen.querySelector(".config-card");
+    if(card){
+      card.innerHTML = `
+        <div class="brand-mark">R</div>
+        <h2>Chưa kết nối Supabase</h2>
+        <p>Thiếu: <b>${esc(configMissing.join(" + "))}</b></p>
+        <p>Mở <code>config.js</code> và kiểm tra lại. Web hiện nhận các tên: <code>url</code>, <code>key</code>, <code>publishableKey</code>, <code>anonKey</code>.</p>
+        <p style="margin-top:14px">Nếu đã điền đúng mà vẫn thấy màn hình này, rất có thể trình duyệt đang dùng file <code>config.js</code> cũ trong cache. Hãy hard refresh bằng <b>Ctrl + F5</b>.</p>
+      `;
+    }
     return;
   }
 
