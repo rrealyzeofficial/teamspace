@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="theme-color" content="#0f1117" />
+  <title>TEAM SPACE</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- PRIVATE LOGIN -->
+  <section class="login-screen" id="loginScreen">
+    <div class="login-art">
+      <div class="login-orbit orbit-a"></div>
+      <div class="login-orbit orbit-b"></div>
+      <div class="login-copy">
+        <div class="login-brand">
+          <div class="brand-mark big">R</div>
+          <div>
+            <p class="eyebrow">PRIVATE WORKSPACE</p>
+            <h1>TEAM SPACE</h1>
+          </div>
+        </div>
+        <h2>Mọi deadline.<br>Một nơi duy nhất.</h2>
+        <p>Workspace nội bộ dành riêng cho thành viên trong nhóm.</p>
+        <div class="login-points">
+          <span>● Projects & deadlines</span>
+          <span>● BandLab & source links</span>
+          <span>● Team tasks & realtime updates</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-panel">
+      <form class="login-box" id="loginForm">
+        <p class="eyebrow">MEMBER ACCESS</p>
+        <h2>Welcome back</h2>
+        <p class="login-desc">Đăng nhập bằng tài khoản và mật khẩu do người giữ web cung cấp.</p>
+
+        <label>
+          <span>Tài khoản / Email</span>
+          <input id="loginEmail" type="email" autocomplete="username" required placeholder="member@example.com" />
+        </label>
+
+        <label>
+          <span>Mật khẩu</span>
+          <div class="password-wrap">
+            <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••••" />
+            <button type="button" id="togglePassword">Show</button>
+          </div>
+        </label>
+
+        <button type="submit" class="login-btn" id="loginBtn">Sign in</button>
+        <p class="login-error hidden" id="loginError"></p>
+
+        <div class="private-note">
+          <b>Private workspace</b>
+          <span>Không có đăng ký công khai. Tài khoản phải được cấp quyền trước.</span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- CONFIG ERROR -->
+  <section class="config-screen hidden" id="configScreen">
+    <div class="config-card">
+      <div class="brand-mark">R</div>
+      <h2>Chưa kết nối Supabase</h2>
+      <p>Mở <code>config.js</code> và điền Project URL + Publishable/Anon Key trước khi chạy.</p>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <div class="app-shell hidden" id="appShell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">R</div>
+        <div>
+          <strong>TEAM SPACE</strong>
+          <span>Private workspace</span>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard"><span>⌂</span><b>Dashboard</b></button>
+        <button class="nav-item" data-view="projects"><span>▦</span><b>Projects</b></button>
+        <button class="nav-item" data-view="mytasks"><span>✓</span><b>My Tasks</b></button>
+        <button class="nav-item" data-view="calendar"><span>◫</span><b>Calendar</b></button>
+        <button class="nav-item" data-view="members"><span>◎</span><b>Members</b></button>
+
+        <div class="nav-divider"></div>
+        <div class="nav-label">TEST AREA</div>
+        <button class="nav-item" data-view="project-test"><span>◇</span><b>Project Test</b></button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="mini-card">
+          <span class="mini-dot"></span>
+          <div>
+            <b>Supabase connected</b>
+            <small>Realtime workspace</small>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobileMenu">☰</button>
+
+        <div>
+          <p class="eyebrow">WORKSPACE</p>
+          <h1 id="pageTitle">Dashboard</h1>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="search-wrap">
+            <span>⌕</span>
+            <input id="globalSearch" type="search" placeholder="Tìm project, task..." />
+          </div>
+
+          <div class="account-pill" id="accountPill">
+            <span class="account-avatar" id="accountAvatar">?</span>
+            <div>
+              <b id="accountName">Member</b>
+              <small>Online</small>
+            </div>
+          </div>
+
+          <button class="icon-top-btn" id="logoutBtn" title="Sign out">↪</button>
+          <button class="primary-btn" id="quickAddBtn">＋ New Project</button>
+        </div>
+      </header>
+
+      <section class="content" id="content">
+        <div class="loading-state">Loading workspace...</div>
+      </section>
+    </main>
+  </div>
+
+  <!-- PROJECT MODAL -->
+  <div class="modal-backdrop hidden" id="projectModal">
+    <div class="modal wide">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">PROJECT</p>
+          <h2 id="projectModalTitle">New Project</h2>
+        </div>
+        <button class="icon-btn close-modal" data-close="projectModal">×</button>
+      </div>
+
+      <form id="projectForm">
+        <input type="hidden" id="projectId" />
+
+        <div class="form-grid two">
+          <label>
+            <span>Tên project</span>
+            <input id="projectName" required placeholder="VIRTUAL TO LIVE Cover" />
+          </label>
+          <label>
+            <span>Loại project</span>
+            <select id="projectType">
+              <option>COVER</option>
+              <option>ORIGINAL</option>
+              <option>EVENT</option>
+              <option>MV</option>
+              <option>SOCIAL</option>
+              <option>OTHER</option>
+            </select>
+          </label>
+          <label>
+            <span>Deadline</span>
+            <input id="projectDeadline" type="datetime-local" required />
+          </label>
+          <label>
+            <span>Priority</span>
+            <select id="projectPriority">
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="formation-preview">
+          <div>
+            <span class="formation-label">SONG FORMATION</span>
+            <strong class="formation-badge team" id="formationPreview">TEAM</strong>
+          </div>
+          <p id="formationHint">TEAM · 4–7 members</p>
+        </div>
+
+        <div class="field-block">
+          <div class="field-title">
+            <span>Members</span>
+            <small>Formation được tính tự động theo số member được chọn.</small>
+          </div>
+          <div class="member-check-grid" id="projectMembers"></div>
+        </div>
+
+        <div class="form-grid two">
+          <label>
+            <span>BandLab</span>
+            <input id="projectBandlab" type="url" placeholder="https://www.bandlab.com/..." />
+          </label>
+          <label>
+            <span>Bài hát gốc</span>
+            <input id="projectOriginal" type="url" placeholder="https://youtube.com/..." />
+          </label>
+          <label>
+            <span>Google Drive / File</span>
+            <input id="projectDrive" type="url" placeholder="https://drive.google.com/..." />
+          </label>
+          <label>
+            <span>Link khác</span>
+            <input id="projectOtherLink" type="url" placeholder="https://..." />
+          </label>
+        </div>
+
+        <div class="field-block">
+          <div class="field-title row">
+            <div>
+              <span>Checklist / Tasks</span>
+              <small>Mỗi task có thể giao cho một member.</small>
+            </div>
+            <button type="button" class="ghost-btn" id="addTaskRowBtn">＋ Add task</button>
+          </div>
+          <div id="taskRows" class="task-editor"></div>
+        </div>
+
+        <label class="full-label">
+          <span>Notes</span>
+          <textarea id="projectNotes" rows="4" placeholder="Key, yêu cầu thu lại, deadline phụ..."></textarea>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="danger-btn hidden" id="deleteProjectBtn">Delete</button>
+          <div class="spacer"></div>
+          <button type="button" class="secondary-btn close-modal" data-close="projectModal">Cancel</button>
+          <button type="submit" class="primary-btn" id="saveProjectBtn">Save Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- PROJECT TEST MODAL -->
+  <div class="modal-backdrop hidden" id="testModal">
+    <div class="modal wide">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">PROJECT TEST</p>
+          <h2 id="testModalTitle">New Candidate Test</h2>
+        </div>
+        <button class="icon-btn close-modal" data-close="testModal">×</button>
+      </div>
+
+      <form id="testForm">
+        <input type="hidden" id="testId" />
+
+        <div class="form-grid two">
+          <label>
+            <span>Tên candidate</span>
+            <input id="testName" required placeholder="Tên member mới" />
+          </label>
+          <label>
+            <span>Deadline test</span>
+            <input id="testDeadline" type="date" required />
+          </label>
+        </div>
+
+        <div class="field-block">
+          <div class="field-title">
+            <span>Reviewers</span>
+            <small>Member theo dõi / review candidate.</small>
+          </div>
+          <div class="member-check-grid" id="testReviewers"></div>
+        </div>
+
+        <div class="form-grid two">
+          <label>
+            <span>BandLab / Submission</span>
+            <input id="testBandlab" type="url" placeholder="https://www.bandlab.com/..." />
+          </label>
+          <label>
+            <span>Bài test gốc</span>
+            <input id="testOriginal" type="url" placeholder="https://youtube.com/..." />
+          </label>
+        </div>
+
+        <label class="full-label">
+          <span>Yêu cầu test</span>
+          <textarea id="testTasks" rows="4" placeholder="Vocal test&#10;Harmony test&#10;Communication / teamwork..."></textarea>
+        </label>
+
+        <label class="full-label">
+          <span>Notes</span>
+          <textarea id="testNotes" rows="4" placeholder="Nhận xét..."></textarea>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="danger-btn hidden" id="deleteTestBtn">Delete</button>
+          <div class="spacer"></div>
+          <button type="button" class="secondary-btn close-modal" data-close="testModal">Cancel</button>
+          <button type="submit" class="primary-btn" id="saveTestBtn">Save Test</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
