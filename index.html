@@ -67,7 +67,7 @@
     <div class="config-card">
       <div class="brand-mark">R</div>
       <h2>Chưa kết nối Supabase</h2>
-      <p>Mở <code>config.js</code> và điền Project URL + Publishable/Anon Key trước khi chạy.</p>
+      <p>Mở <code>config.js?v=2.3</code> và điền Project URL + Publishable/Anon Key trước khi chạy.</p>
     </div>
   </section>
 
@@ -287,6 +287,13 @@
             <span>Bài test gốc</span>
             <input id="testOriginal" type="url" placeholder="https://youtube.com/..." />
           </label>
+          <label>
+            <span>Member Color khi PASS</span>
+            <div class="color-editor">
+              <input id="testColorPicker" type="color" value="#D8D8FF" />
+              <input id="testColor" maxlength="7" value="#D8D8FF" placeholder="#D8D8FF" />
+            </div>
+          </label>
         </div>
 
         <label class="full-label">
@@ -327,16 +334,30 @@
         <input type="hidden" id="profileMemberSlug" />
 
         <div class="profile-edit-hero">
-          <div class="profile-emoji-preview" id="profileEmojiPreview">★</div>
-          <div>
+          <div class="profile-avatar-preview" id="profileAvatarPreview">★</div>
+          <div class="profile-edit-copy">
             <b id="profileEditingName">Member</b>
             <small>Mọi member trong workspace đều có thể chỉnh sửa profile.</small>
+            <div class="avatar-upload-actions">
+              <label class="avatar-file-label">
+                <span>Upload ảnh đại diện</span>
+                <input id="profileAvatarFile" type="file" accept="image/png,image/jpeg,image/webp" />
+              </label>
+              <button type="button" class="ghost-btn" id="removeProfileAvatarBtn">Xóa ảnh</button>
+            </div>
+            <small>PNG / JPG / WEBP · tối đa 5 MB.</small>
           </div>
         </div>
 
         <div class="form-grid two">
           <label><span>Stage Name</span><input id="profileStageName" placeholder="Stage name" /></label>
-          <label><span>Ngày tháng sinh</span><input id="profileBirthDate" type="date" /></label>
+          <label>
+            <span>Ngày tháng sinh</span>
+            <div class="birth-editor">
+              <select id="profileBirthDay"><option value="">Ngày</option></select>
+              <select id="profileBirthMonth"><option value="">Tháng</option></select>
+            </div>
+          </label>
           <label><span>MBTI</span><input id="profileMbti" maxlength="8" placeholder="VD: ENFP" /></label>
           <label><span>Zodiac</span><input id="profileZodiac" placeholder="VD: Leo" /></label>
           <label>
@@ -346,7 +367,7 @@
               <input id="profileColor" maxlength="7" placeholder="#B0D9FA" />
             </div>
           </label>
-          <label><span>Emoji / Icon</span><input id="profileEmoji" maxlength="8" placeholder="⭐" /></label>
+          <label><span>Emoji / Icon dự phòng</span><input id="profileEmoji" maxlength="8" placeholder="⭐" /></label>
         </div>
 
         <label class="full-label">
@@ -392,7 +413,7 @@
   <div class="toast-wrap" id="toastWrap"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=2.2"></script>
-  <script src="app.js?v=2.2.1"></script>
+  <script src="config.js?v=2.3"></script>
+  <script src="app.js?v=2.3"></script>
 </body>
 </html>

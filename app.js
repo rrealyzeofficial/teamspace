@@ -17,8 +17,8 @@ const CFG = {
 };
 
 const configMissing = [];
-if (!CFG.url || CFG.url.includes("https://cryyraymtppuzxqeesbo.supabase.co")) configMissing.push("Project URL");
-if (!CFG.key || CFG.key.includes("sb_publishable_dlDZqyPQT4HZzvC6GU_oLg_uyiLsdeM")) configMissing.push("Publishable/Anon Key");
+if (!CFG.url || CFG.url.includes("YOUR_SUPABASE")) configMissing.push("Project URL");
+if (!CFG.key || CFG.key.includes("YOUR_SUPABASE")) configMissing.push("Publishable/Anon Key");
 
 const configured = configMissing.length === 0;
 
@@ -46,6 +46,8 @@ let state = {
 
 let currentView = "dashboard";
 let searchQuery = "";
+let profileAvatarFile = null;
+let profileAvatarRemove = false;
 
 function uid(){
   return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10);
@@ -98,7 +100,7 @@ function formationInfo(memberIds=[]){
     SOLO: `SOLO · ${count || 0} member`,
     DUO: "DUO · 2 members",
     TRIPLE: "TRIPLE · 3 members",
-    TEAM: "TEAM · 4–7 members",
+    TEAM: `TEAM · 4–${Math.max(4,officialCount-1)} members`,
     GROUP: `GROUP · đủ ${officialCount} members`
   };
   return { formation, hint: hints[formation] };
@@ -118,6 +120,48 @@ function formatDate(value){
   return new Intl.DateTimeFormat("vi-VN",{day:"2-digit",month:"short",year:"numeric"}).format(d);
 }
 
+function normalizeMonthDay(value){
+  if(!value) return "";
+  const s=String(value);
+  if(/^\d{2}-\d{2}$/.test(s)) return s;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.slice(5);
+  return "";
+}
+
+function formatMonthDay(value){
+  const md=normalizeMonthDay(value);
+  if(!md) return "—";
+  const [month,day]=md.split("-");
+  return `${day}/${month}`;
+}
+
+function validMonthDay(month,day){
+  if(!month || !day) return true;
+  const m=Number(month), d=Number(day);
+  const probe=new Date(2000,m-1,d);
+  return probe.getMonth()===m-1 && probe.getDate()===d;
+}
+
+function populateBirthSelectors(){
+  const day=$("profileBirthDay"), month=$("profileBirthMonth");
+  if(day && day.options.length<=1){
+    for(let i=1;i<=31;i++){
+      const o=document.createElement("option");
+      o.value=String(i).padStart(2,"0");
+      o.textContent=String(i).padStart(2,"0");
+      day.appendChild(o);
+    }
+  }
+  if(month && month.options.length<=1){
+    for(let i=1;i<=12;i++){
+      const o=document.createElement("option");
+      o.value=String(i).padStart(2,"0");
+      o.textContent=`Tháng ${i}`;
+      month.appendChild(o);
+    }
+  }
+}
+
 function relativeDeadline(value){
   const diff = new Date(value).getTime()-Date.now();
   const hours = Math.ceil(diff/36e5);
@@ -135,7 +179,11 @@ function projectProgress(p){
 
 function avatar(member, extraClass=""){
   if(!member) return "";
-  return `<span class="avatar ${extraClass}" title="${esc(member.name)}" style="background:${esc(memberDisplayColor(member.id))}">${esc(initials(member.name))}</span>`;
+  const p=profileFor(member.id);
+  const inside=p.avatarUrl
+    ? `<img src="${esc(p.avatarUrl)}" alt="${esc(p.stageName||member.name)}">`
+    : esc(p.emoji || initials(member.name));
+  return `<span class="avatar ${extraClass}" title="${esc(member.name)}" style="background:${esc(memberDisplayColor(member.id))}">${inside}</span>`;
 }
 
 function memberAvatars(ids=[]){
@@ -164,12 +212,14 @@ function mapProfile(row){
   return {
     memberId: row.member_slug,
     stageName: row.stage_name || "",
-    birthDate: row.birth_date || "",
+    birthMonthDay: normalizeMonthDay(row.birth_month_day || row.birth_date || ""),
     roles: Array.isArray(row.roles) ? row.roles : [],
     mbti: row.mbti || "",
     zodiac: row.zodiac || "",
     color: row.profile_color || "",
     emoji: row.emoji || "",
+    avatarPath: row.avatar_path || "",
+    avatarUrl: "",
     preDebutSongs: Array.isArray(row.pre_debut_songs) ? row.pre_debut_songs : [],
     stats: Array.isArray(row.stats) ? row.stats : [],
     languages: Array.isArray(row.languages) ? row.languages : [],
@@ -184,12 +234,14 @@ function profileFor(memberId){
   return {
     memberId,
     stageName: p.stageName || m?.name || "",
-    birthDate: p.birthDate || "",
+    birthMonthDay: p.birthMonthDay || "",
     roles: Array.isArray(p.roles) ? p.roles : [],
     mbti: p.mbti || "",
     zodiac: p.zodiac || "",
     color: p.color || m?.color || "#B0D9FA",
     emoji: p.emoji || "",
+    avatarPath: p.avatarPath || "",
+    avatarUrl: p.avatarUrl || "",
     preDebutSongs: Array.isArray(p.preDebutSongs) ? p.preDebutSongs : [],
     stats: Array.isArray(p.stats) && p.stats.length ? p.stats : [
       {name:"VOCAL",value:0},{name:"RAP",value:0},{name:"ACT",value:0}
@@ -228,6 +280,7 @@ function mapTest(row){
     reviewerIds: row.reviewer_slugs || [],
     bandlab: row.bandlab_url || "",
     original: row.original_url || "",
+    candidateColor: row.candidate_color || "#D8D8FF",
     tasks: Array.isArray(row.test_tasks) ? row.test_tasks : [],
     notes: row.notes || "",
     status: row.status || "testing",
@@ -242,6 +295,28 @@ function mapActivity(row){
     memberId: row.actor_member_slug,
     at: row.created_at
   };
+}
+
+async function hydrateProfileAvatars(){
+  const profiles=Object.values(state.profiles);
+  await Promise.all(profiles.map(async p=>{
+    p.avatarUrl="";
+    if(!p.avatarPath) return;
+    const {data,error}=await sb.storage.from("member-avatars").createSignedUrl(p.avatarPath,3600);
+    if(!error && data?.signedUrl) p.avatarUrl=data.signedUrl;
+  }));
+}
+
+async function uploadProfileAvatar(memberId,file){
+  const ext=(file.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"") || "jpg";
+  const path=`${memberId}/${Date.now()}-${uid()}.${ext}`;
+  const {error}=await sb.storage.from("member-avatars").upload(path,file,{
+    cacheControl:"3600",
+    upsert:false,
+    contentType:file.type
+  });
+  if(error) throw error;
+  return path;
 }
 
 async function boot(){
@@ -361,6 +436,7 @@ async function loadAllData(){
   state.profiles = Object.fromEntries(profilesRes.data.map(row=>{
     const p=mapProfile(row); return [p.memberId,p];
   }));
+  await hydrateProfileAvatars();
   state.projects = projectsRes.data.map(mapProject);
   state.tests = testsRes.data.map(mapTest);
   state.activity = activityRes.data.map(mapActivity);
@@ -371,6 +447,7 @@ function subscribeRealtime(){
 
   realtimeChannel = sb
     .channel("team-space-db")
+    .on("postgres_changes",{event:"*",schema:"public",table:"team_members"},()=>refreshMembers())
     .on("postgres_changes",{event:"*",schema:"public",table:"team_member_profiles"},()=>refreshProfiles())
     .on("postgres_changes",{event:"*",schema:"public",table:"team_projects"},()=>refreshProjects())
     .on("postgres_changes",{event:"*",schema:"public",table:"team_project_tests"},()=>refreshTests())
@@ -378,10 +455,21 @@ function subscribeRealtime(){
     .subscribe();
 }
 
+async function refreshMembers(){
+  const {data,error}=await sb.from("team_members").select("*").eq("is_active",true).order("created_at",{ascending:true});
+  if(!error){
+    state.members=data.map(mapMember);
+    currentMember=state.members.find(m=>m.authUserId===currentUser?.id) || currentMember;
+    if(currentMember) renderAccount();
+    render();
+  }
+}
+
 async function refreshProfiles(){
   const {data,error}=await sb.from("team_member_profiles").select("*");
   if(!error){
     state.profiles=Object.fromEntries(data.map(row=>{const p=mapProfile(row);return [p.memberId,p]}));
+    await hydrateProfileAvatars();
     if(currentMember) renderAccount();
     render();
   }
@@ -413,8 +501,11 @@ async function activity(text){
 }
 
 function renderAccount(){
-  $("accountName").textContent=currentMember.name;
-  $("accountAvatar").textContent=initials(currentMember.name);
+  const p=profileFor(currentMember.id);
+  $("accountName").textContent=p.stageName || currentMember.name;
+  $("accountAvatar").innerHTML=p.avatarUrl
+    ? `<img src="${esc(p.avatarUrl)}" alt="${esc(p.stageName||currentMember.name)}">`
+    : esc(p.emoji || initials(currentMember.name));
   $("accountAvatar").style.background=memberDisplayColor(currentMember.id);
 }
 
@@ -631,10 +722,13 @@ function renderMembers(){
     const assigned=state.projects.flatMap(pr=>pr.tasks).filter(t=>t.assigneeId===m.id);
     const complete=assigned.filter(t=>t.done).length;
     const icon=p.emoji || initials(m.name);
+    const avatarInside=p.avatarUrl
+      ? `<img src="${esc(p.avatarUrl)}" alt="${esc(p.stageName||m.name)}">`
+      : esc(icon);
     return `<article class="member-card">
       <div class="member-accent" style="background:${esc(p.color)}"></div>
       <div class="member-hero">
-        <div class="member-big-avatar ${p.emoji?"with-emoji":""}" style="background:${esc(p.color)}">${esc(icon)}</div>
+        <div class="member-big-avatar ${p.emoji&&!p.avatarUrl?"with-emoji":""}" style="background:${esc(p.color)}">${avatarInside}</div>
         <div>
           <h3>${esc(p.stageName || m.name)}</h3>
           <div class="hex">${p.stageName && p.stageName!==m.name?esc(m.name)+" · ":""}${esc(p.color)}${m.isOwner?" · OWNER":""}</div>
@@ -682,9 +776,13 @@ function openMemberProfile(memberId){
 
 function renderProfileView(memberId){
   const m=memberById(memberId); const p=profileFor(memberId); if(!m)return;
+  const heroAvatar=p.avatarUrl
+    ? `<img src="${esc(p.avatarUrl)}" alt="${esc(p.stageName||m.name)}">`
+    : esc(p.emoji || initials(m.name));
+  const canDelete=!!currentMember?.isOwner && m.id!==currentMember.id && !m.isOwner;
   $("profileView").innerHTML=`
     <div class="profile-hero" style="--profile-color:${esc(p.color)}">
-      <div class="profile-hero-icon">${esc(p.emoji || initials(m.name))}</div>
+      <div class="profile-hero-icon">${heroAvatar}</div>
       <div class="profile-hero-copy">
         <h2>${esc(p.stageName || m.name)}</h2>
         <div class="real-name">${esc(m.name)}${m.isOwner?" · OWNER":""}</div>
@@ -695,14 +793,17 @@ function renderProfileView(memberId){
           ${p.emoji?`<span class="profile-meta-chip">ICON · ${esc(p.emoji)}</span>`:""}
         </div>
       </div>
-      <div class="profile-view-actions"><button class="primary-btn" id="editProfileBtn">Edit Profile</button></div>
+      <div class="profile-view-actions">
+        <button class="primary-btn" id="editProfileBtn">Edit Profile</button>
+        ${canDelete?`<button class="ghost-btn member-delete-btn" id="deleteMemberBtn">Delete Member</button>`:""}
+      </div>
     </div>
     <div class="profile-sections">
       <section class="profile-section">
         <h3>Basic Information</h3>
         <div class="profile-info-grid">
           <div class="profile-info-item"><small>STAGE NAME</small><b>${esc(p.stageName||"—")}</b></div>
-          <div class="profile-info-item"><small>BIRTH DATE</small><b>${esc(p.birthDate?formatDate(p.birthDate):"—")}</b></div>
+          <div class="profile-info-item"><small>BIRTHDAY</small><b>${esc(formatMonthDay(p.birthMonthDay))}</b></div>
         </div>
         <div style="margin-top:11px">${profileList(p.roles)}</div>
       </section>
@@ -720,19 +821,53 @@ function renderProfileView(memberId){
       </section>
     </div>`;
   $("editProfileBtn").addEventListener("click",()=>startProfileEdit(memberId));
+  $("deleteMemberBtn")?.addEventListener("click",()=>deleteMember(memberId));
 }
 
 function startProfileEdit(memberId){
   const m=memberById(memberId); const p=profileFor(memberId); if(!m)return;
   $("profileView").classList.add("hidden"); $("profileForm").classList.remove("hidden");
   $("profileMemberSlug").value=memberId; $("profileEditingName").textContent=m.name;
-  $("profileStageName").value=p.stageName; $("profileBirthDate").value=p.birthDate;
+  $("profileStageName").value=p.stageName;
+  populateBirthSelectors();
+  const md=normalizeMonthDay(p.birthMonthDay);
+  const [month,day]=md?md.split("-"):["",""];
+  $("profileBirthDay").value=day||"";
+  $("profileBirthMonth").value=month||"";
   $("profileMbti").value=p.mbti; $("profileZodiac").value=p.zodiac;
   $("profileColor").value=p.color; $("profileColorPicker").value=/^#[0-9a-fA-F]{6}$/.test(p.color)?p.color:"#B0D9FA";
-  $("profileEmoji").value=p.emoji; $("profileEmojiPreview").textContent=p.emoji||"★"; $("profileEmojiPreview").style.background=p.color;
+  $("profileEmoji").value=p.emoji;
+  profileAvatarFile=null;
+  profileAvatarRemove=false;
+  $("profileAvatarFile").value="";
+  renderProfileAvatarPreview(p,m);
   $("profileRoles").value=p.roles.join("\n"); $("profilePreDebut").value=p.preDebutSongs.join("\n"); $("profileFacts").value=p.facts.join("\n");
   $("statsEditor").innerHTML=""; p.stats.forEach(x=>addBarEditorRow("statsEditor",x));
   $("languagesEditor").innerHTML=""; p.languages.forEach(x=>addBarEditorRow("languagesEditor",x));
+}
+
+function renderProfileAvatarPreview(p,m){
+  const box=$("profileAvatarPreview");
+  if(!box) return;
+  box.style.background=p.color || "#B0D9FA";
+  box.innerHTML=p.avatarUrl && !profileAvatarRemove
+    ? `<img src="${esc(p.avatarUrl)}" alt="${esc(p.stageName||m.name)}">`
+    : esc(p.emoji || initials(m.name));
+}
+
+async function deleteMember(memberId){
+  const m=memberById(memberId);
+  if(!m || !currentMember?.isOwner) return;
+  const ok=confirm(`Xóa ${m.name} khỏi Members?\\n\\nMember này sẽ được gỡ khỏi project/reviewer hiện tại. Auth User trong Supabase Authentication sẽ KHÔNG bị xóa tự động.`);
+  if(!ok) return;
+
+  const {error}=await sb.rpc("team_delete_member",{p_target_slug:memberId});
+  if(error){toast(error.message,true);return}
+
+  await activity(`xóa member ${m.name} khỏi workspace`);
+  closeModal("memberProfileModal");
+  await Promise.all([refreshMembers(),refreshProfiles(),refreshProjects(),refreshTests()]);
+  toast(`${m.name} đã được xóa khỏi Members`);
 }
 
 function addBarEditorRow(containerId,item={name:"",value:0}){
@@ -763,7 +898,7 @@ function renderProjectTest(){
 
   $("newTestBtn").addEventListener("click",()=>openTestModal());
   document.querySelectorAll(".edit-test").forEach(btn=>btn.addEventListener("click",()=>openTestModal(btn.dataset.id)));
-  document.querySelectorAll(".test-pass").forEach(btn=>btn.addEventListener("click",()=>setTestStatus(btn.dataset.id,"passed")));
+  document.querySelectorAll(".test-pass").forEach(btn=>btn.addEventListener("click",()=>passCandidate(btn.dataset.id)));
   document.querySelectorAll(".test-extend").forEach(btn=>btn.addEventListener("click",()=>extendCandidate(btn.dataset.id)));
   document.querySelectorAll(".test-fail").forEach(btn=>btn.addEventListener("click",()=>setTestStatus(btn.dataset.id,"not_passed")));
 }
@@ -775,7 +910,7 @@ function testCard(t){
     <div class="topline"><span class="tag test">PROJECT TEST</span><button class="card-menu edit-test" data-id="${t.id}">•••</button></div>
     <div class="test-status" style="margin-top:14px"><span class="status-dot" style="background:${colors[t.status]||colors.testing}"></span>${labels[t.status]||"IN TEST"}</div>
     <h3>${esc(t.name)}</h3>
-    <div class="test-meta">Deadline · ${esc(formatDate(t.deadline))}</div>
+    <div class="test-meta"><span class="test-color-dot" style="background:${esc(t.candidateColor||"#D8D8FF")}"></span> &nbsp;Deadline · ${esc(formatDate(t.deadline))}</div>
     <div class="avatar-row">${memberAvatars(t.reviewerIds||[])}</div>
     ${(t.bandlab||t.original)?`<div class="link-row">
       ${t.bandlab?`<a class="link-chip" href="${esc(t.bandlab)}" target="_blank" rel="noopener">Submission ↗</a>`:""}
@@ -1000,6 +1135,9 @@ function openTestModal(id=null){
   $("testDeadline").value=t?.deadline||nextDateOnly(7);
   $("testBandlab").value=t?.bandlab||"";
   $("testOriginal").value=t?.original||"";
+  const testColor=t?.candidateColor||"#D8D8FF";
+  $("testColor").value=testColor;
+  $("testColorPicker").value=/^#[0-9a-fA-F]{6}$/.test(testColor)?testColor:"#D8D8FF";
   $("testTasks").value=(t?.tasks||["Vocal test","Harmony test","Communication / teamwork"]).join("\n");
   $("testNotes").value=t?.notes||"";
   fillMemberChecks("testReviewers",t?.reviewerIds||[currentMember.id],"testReviewer");
@@ -1017,6 +1155,7 @@ $("testForm").addEventListener("submit",async e=>{
     reviewer_slugs:[...document.querySelectorAll('input[name="testReviewer"]:checked')].map(x=>x.value),
     bandlab_url:$("testBandlab").value.trim(),
     original_url:$("testOriginal").value.trim(),
+    candidate_color:/^#[0-9A-Fa-f]{6}$/.test($("testColor").value.trim()) ? $("testColor").value.trim().toUpperCase() : "#D8D8FF",
     test_tasks:$("testTasks").value.split("\n").map(x=>x.trim()).filter(Boolean),
     notes:$("testNotes").value.trim(),
     status:old?.status||"testing"
@@ -1053,6 +1192,19 @@ $("deleteTestBtn").addEventListener("click",async()=>{
   toast("Test deleted");
 });
 
+async function passCandidate(id){
+  const t=state.tests.find(x=>x.id===id);
+  if(!t)return;
+  if(!confirm(`PASS ${t.name}?\n\nNgười này sẽ tự động được thêm vào Members, profile, danh sách chọn member trong Projects và các phần liên quan.`)) return;
+
+  const {data,error}=await sb.rpc("team_pass_candidate",{p_test_id:id});
+  if(error){toast(error.message,true);return}
+
+  await activity(`${t.name} đã PASS Project Test và được thêm vào Members`);
+  await Promise.all([refreshMembers(),refreshProfiles(),refreshTests()]);
+  toast(`${t.name} đã được thêm vào Members`);
+}
+
 async function setTestStatus(id,status){
   const t=state.tests.find(x=>x.id===id);
   if(!t)return;
@@ -1073,45 +1225,128 @@ async function extendCandidate(id){
 }
 
 
+$("testColorPicker").addEventListener("input",()=>$("testColor").value=$("testColorPicker").value.toUpperCase());
+$("testColor").addEventListener("input",()=>{
+  const v=$("testColor").value.trim();
+  if(/^#[0-9a-fA-F]{6}$/.test(v)) $("testColorPicker").value=v;
+});
+
+$("profileAvatarFile").addEventListener("change",()=>{
+  const file=$("profileAvatarFile").files?.[0] || null;
+  if(!file){profileAvatarFile=null;return}
+  if(file.size>5*1024*1024){
+    toast("Ảnh đại diện tối đa 5 MB",true);
+    $("profileAvatarFile").value="";
+    profileAvatarFile=null;
+    return;
+  }
+  if(!["image/png","image/jpeg","image/webp"].includes(file.type)){
+    toast("Chỉ hỗ trợ PNG, JPG hoặc WEBP",true);
+    $("profileAvatarFile").value="";
+    profileAvatarFile=null;
+    return;
+  }
+  profileAvatarFile=file;
+  profileAvatarRemove=false;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    $("profileAvatarPreview").innerHTML=`<img src="${esc(reader.result)}" alt="Avatar preview">`;
+  };
+  reader.readAsDataURL(file);
+});
+
+$("removeProfileAvatarBtn").addEventListener("click",()=>{
+  profileAvatarFile=null;
+  profileAvatarRemove=true;
+  $("profileAvatarFile").value="";
+  const memberId=$("profileMemberSlug").value;
+  const m=memberById(memberId), p=profileFor(memberId);
+  $("profileAvatarPreview").style.background=p.color;
+  $("profileAvatarPreview").textContent=p.emoji || initials(m?.name||"Member");
+});
+
 $("addStatBtn").addEventListener("click",()=>addBarEditorRow("statsEditor",{name:"",value:0}));
 $("addLanguageBtn").addEventListener("click",()=>addBarEditorRow("languagesEditor",{name:"",value:0}));
 $("profileColorPicker").addEventListener("input",()=>{
   $("profileColor").value=$("profileColorPicker").value.toUpperCase();
-  $("profileEmojiPreview").style.background=$("profileColorPicker").value;
+  $("profileAvatarPreview").style.background=$("profileColorPicker").value;
 });
 $("profileColor").addEventListener("input",()=>{
   const v=$("profileColor").value.trim();
   if(/^#[0-9a-fA-F]{6}$/.test(v)){
     $("profileColorPicker").value=v;
-    $("profileEmojiPreview").style.background=v;
+    $("profileAvatarPreview").style.background=v;
   }
 });
-$("profileEmoji").addEventListener("input",()=>$("profileEmojiPreview").textContent=$("profileEmoji").value.trim()||"★");
+$("profileEmoji").addEventListener("input",()=>{
+  if(profileAvatarFile || (!profileAvatarRemove && profileFor($("profileMemberSlug").value).avatarUrl)) return;
+  const m=memberById($("profileMemberSlug").value);
+  $("profileAvatarPreview").textContent=$("profileEmoji").value.trim() || initials(m?.name||"Member");
+});
 $("cancelProfileEditBtn").addEventListener("click",()=>{
-  const id=$("profileMemberSlug").value; $("profileForm").classList.add("hidden"); $("profileView").classList.remove("hidden"); renderProfileView(id);
+  profileAvatarFile=null;
+  profileAvatarRemove=false;
+  const id=$("profileMemberSlug").value;
+  $("profileForm").classList.add("hidden");
+  $("profileView").classList.remove("hidden");
+  renderProfileView(id);
 });
 $("profileForm").addEventListener("submit",async e=>{
   e.preventDefault();
   const memberId=$("profileMemberSlug").value; const m=memberById(memberId); if(!m)return;
   let color=$("profileColor").value.trim().toUpperCase();
   if(!/^#[0-9A-F]{6}$/.test(color)){toast("Color phải có dạng #RRGGBB",true);return}
+
+  const birthDay=$("profileBirthDay").value;
+  const birthMonth=$("profileBirthMonth").value;
+  if(!validMonthDay(birthMonth,birthDay)){toast("Ngày/tháng sinh không hợp lệ",true);return}
+  const birthMonthDay=birthDay&&birthMonth ? `${birthMonth}-${birthDay}` : null;
+
+  const oldProfile=profileFor(memberId);
+  let avatarPath=oldProfile.avatarPath || "";
+  const btn=$("saveProfileBtn"); btn.disabled=true;
+
+  try{
+    if(profileAvatarFile){
+      avatarPath=await uploadProfileAvatar(memberId,profileAvatarFile);
+    }else if(profileAvatarRemove){
+      avatarPath="";
+    }
+  }catch(err){
+    btn.disabled=false;
+    toast(`Upload avatar lỗi: ${err.message||err}`,true);
+    return;
+  }
+
   const payload={
     member_slug:memberId,
     stage_name:$("profileStageName").value.trim(),
-    birth_date:$("profileBirthDate").value||null,
+    birth_month_day:birthMonthDay,
     roles:lines("profileRoles"),
     mbti:$("profileMbti").value.trim(),
     zodiac:$("profileZodiac").value.trim(),
     profile_color:color,
     emoji:$("profileEmoji").value.trim(),
+    avatar_path:avatarPath || null,
     pre_debut_songs:lines("profilePreDebut"),
     stats:collectBarRows("statsEditor"),
     languages:collectBarRows("languagesEditor"),
     facts:lines("profileFacts")
   };
-  const btn=$("saveProfileBtn"); btn.disabled=true;
   const {error}=await sb.from("team_member_profiles").upsert(payload,{onConflict:"member_slug"});
-  btn.disabled=false; if(error){toast(error.message,true);return}
+  btn.disabled=false;
+  if(error){
+    if(profileAvatarFile && avatarPath && avatarPath!==oldProfile.avatarPath){
+      await sb.storage.from("member-avatars").remove([avatarPath]);
+    }
+    toast(error.message,true);return
+  }
+
+  if(oldProfile.avatarPath && oldProfile.avatarPath!==avatarPath){
+    await sb.storage.from("member-avatars").remove([oldProfile.avatarPath]);
+  }
+  profileAvatarFile=null;
+  profileAvatarRemove=false;
   await activity(`cập nhật profile của ${m.name}`);
   await refreshProfiles();
   $("profileForm").classList.add("hidden"); $("profileView").classList.remove("hidden"); renderProfileView(memberId); toast("Profile saved");

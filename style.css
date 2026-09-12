@@ -181,3 +181,98 @@ form input:focus,form select:focus,form textarea:focus{border-color:#50607b}form
 .color-editor{display:grid;grid-template-columns:46px 1fr;gap:7px}.color-editor input[type=color]{padding:4px;height:40px}
 .profile-editor-block{margin:16px 0}.bar-editor-list{display:flex;flex-direction:column;gap:8px}.bar-editor-row{display:grid;grid-template-columns:150px 1fr 70px 40px;gap:8px;align-items:center}.bar-editor-row input[type=range]{padding:0}.bar-editor-row input[type=number]{text-align:center}.bar-editor-row button{height:40px;border:1px solid var(--line);background:#1b202a;color:var(--danger);border-radius:10px}
 @media(max-width:720px){.profile-sections{grid-template-columns:1fr}.profile-section.full{grid-column:auto}.profile-hero{align-items:flex-start;flex-wrap:wrap}.profile-view-actions{margin-left:0;width:100%}.profile-view-actions button{width:100%}.bar-editor-row{grid-template-columns:1fr 1fr 64px 38px}.profile-bar-row{grid-template-columns:80px 1fr 38px}.profile-info-grid{grid-template-columns:1fr}}
+
+
+/* ===== V2.3 MEMBER AVATAR / BIRTHDAY / DELETE ===== */
+.avatar img,
+.account-avatar img,
+.member-big-avatar img,
+.profile-hero-icon img,
+.profile-avatar-preview img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.avatar,
+.account-avatar,
+.member-big-avatar,
+.profile-hero-icon,
+.profile-avatar-preview{
+  overflow:hidden;
+}
+.profile-avatar-preview{
+  width:74px;
+  height:74px;
+  border-radius:22px;
+  display:grid;
+  place-items:center;
+  flex:none;
+  background:#B0D9FA;
+  color:#11131a;
+  font-size:30px;
+  font-weight:900;
+  border:1px solid var(--line);
+}
+.profile-edit-copy{
+  min-width:0;
+  flex:1;
+}
+.avatar-upload-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin:9px 0 4px;
+}
+.avatar-file-label{
+  display:inline-flex!important;
+  width:auto!important;
+  flex-direction:row!important;
+  align-items:center;
+  gap:7px!important;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  background:#1b202a;
+  border-radius:10px;
+  cursor:pointer;
+}
+.avatar-file-label>span{
+  font-size:9px!important;
+}
+.avatar-file-label input{
+  width:auto;
+  max-width:190px;
+  padding:0;
+  border:0;
+  background:transparent;
+  font-size:9px;
+}
+.birth-editor{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.profile-view-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.member-delete-btn{
+  color:var(--danger)!important;
+  border-color:rgba(255,107,118,.32)!important;
+  background:rgba(255,107,118,.07)!important;
+}
+.test-color-dot{
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  display:inline-block;
+  border:1px solid rgba(255,255,255,.2);
+}
+@media(max-width:560px){
+  .profile-edit-hero{align-items:flex-start}
+  .avatar-upload-actions{align-items:stretch;flex-direction:column}
+  .avatar-file-label{width:100%!important}
+  .birth-editor{grid-template-columns:1fr 1fr}
+}
