@@ -309,10 +309,90 @@
     </div>
   </div>
 
+
+  <!-- MEMBER PROFILE MODAL -->
+  <div class="modal-backdrop hidden" id="memberProfileModal">
+    <div class="modal profile-modal">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">MEMBER PROFILE</p>
+          <h2 id="profileModalTitle">Profile</h2>
+        </div>
+        <button class="icon-btn close-modal" data-close="memberProfileModal">×</button>
+      </div>
+
+      <div id="profileView"></div>
+
+      <form id="profileForm" class="hidden">
+        <input type="hidden" id="profileMemberSlug" />
+
+        <div class="profile-edit-hero">
+          <div class="profile-emoji-preview" id="profileEmojiPreview">★</div>
+          <div>
+            <b id="profileEditingName">Member</b>
+            <small>Mọi member trong workspace đều có thể chỉnh sửa profile.</small>
+          </div>
+        </div>
+
+        <div class="form-grid two">
+          <label><span>Stage Name</span><input id="profileStageName" placeholder="Stage name" /></label>
+          <label><span>Ngày tháng sinh</span><input id="profileBirthDate" type="date" /></label>
+          <label><span>MBTI</span><input id="profileMbti" maxlength="8" placeholder="VD: ENFP" /></label>
+          <label><span>Zodiac</span><input id="profileZodiac" placeholder="VD: Leo" /></label>
+          <label>
+            <span>Color</span>
+            <div class="color-editor">
+              <input id="profileColorPicker" type="color" value="#B0D9FA" />
+              <input id="profileColor" maxlength="7" placeholder="#B0D9FA" />
+            </div>
+          </label>
+          <label><span>Emoji / Icon</span><input id="profileEmoji" maxlength="8" placeholder="⭐" /></label>
+        </div>
+
+        <label class="full-label">
+          <span>Vai trò</span>
+          <textarea id="profileRoles" rows="3" placeholder="Mỗi vai trò một dòng\nMain Vocalist\nLead Rapper"></textarea>
+        </label>
+
+        <label class="full-label">
+          <span>Pre-debut Songs</span>
+          <textarea id="profilePreDebut" rows="4" placeholder="Mỗi bài một dòng"></textarea>
+        </label>
+
+        <div class="profile-editor-block">
+          <div class="field-title row">
+            <div><span>Stats</span><small>Tên kỹ năng + mức 0–100%.</small></div>
+            <button type="button" class="ghost-btn" id="addStatBtn">＋ Add stat</button>
+          </div>
+          <div id="statsEditor" class="bar-editor-list"></div>
+        </div>
+
+        <div class="profile-editor-block">
+          <div class="field-title row">
+            <div><span>Languages</span><small>Tên ngôn ngữ + mức 0–100%.</small></div>
+            <button type="button" class="ghost-btn" id="addLanguageBtn">＋ Add language</button>
+          </div>
+          <div id="languagesEditor" class="bar-editor-list"></div>
+        </div>
+
+        <label class="full-label">
+          <span>Facts</span>
+          <textarea id="profileFacts" rows="6" placeholder="Mỗi fact một dòng"></textarea>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="secondary-btn" id="cancelProfileEditBtn">Cancel</button>
+          <div class="spacer"></div>
+          <button type="submit" class="primary-btn" id="saveProfileBtn">Save Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="toast-wrap" id="toastWrap"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=2.1"></script>
-  <script src="app.js?v=2.1"></script>
+  <script src="config.js?v=2.2"></script>
+  <script src="app.js?v=2.2"></script>
 </body>
 </html>

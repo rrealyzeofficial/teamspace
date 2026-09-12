@@ -1,9 +1,23 @@
 // TEAM SPACE — Supabase config
-// Điền 2 giá trị này từ Supabase Dashboard > Connect / API Keys.
-// Có thể dùng Publishable key (khuyến nghị cho project mới) hoặc anon key cũ.
-// TUYỆT ĐỐI không đặt service_role key ở đây.
+// Dán đúng Project URL và Publishable/Anon Key của project Supabase.
+// KHÔNG dùng service_role key.
+//
+// Có thể dùng một trong các cách dưới đây.
+// Cách khuyến nghị:
 
 window.TEAM_SUPABASE = {
-  url: "https://cryyraymtppuzxqeesbo.supabase.co",
-  key: "sb_publishable_dlDZqyPQT4HZzvC6GU_oLg_uyiLsdeM"
+  url: "https://YOUR-PROJECT.supabase.co",
+  key: "YOUR_PUBLISHABLE_OR_ANON_KEY"
 };
+
+// Nếu bạn thích tên khác, app.js V2.1 cũng chấp nhận:
+// window.TEAM_SUPABASE = {
+//   supabaseUrl: "...",
+//   publishableKey: "..."
+// };
+//
+// hoặc:
+// window.TEAM_SUPABASE = {
+//   url: "...",
+//   anonKey: "..."
+// };

@@ -40,6 +40,7 @@ let state = {
   projects: [],
   tests: [],
   activity: [],
+  profiles: {},
   calendarCursor: new Date().toISOString().slice(0,7)
 };
 
@@ -134,7 +135,7 @@ function projectProgress(p){
 
 function avatar(member, extraClass=""){
   if(!member) return "";
-  return `<span class="avatar ${extraClass}" title="${esc(member.name)}" style="background:${esc(member.color)}">${esc(initials(member.name))}</span>`;
+  return `<span class="avatar ${extraClass}" title="${esc(member.name)}" style="background:${esc(memberDisplayColor(member.id))}">${esc(initials(member.name))}</span>`;
 }
 
 function memberAvatars(ids=[]){
@@ -157,6 +158,49 @@ function mapMember(row){
     isOwner: !!row.is_owner,
     isActive: row.is_active !== false
   };
+}
+
+function mapProfile(row){
+  return {
+    memberId: row.member_slug,
+    stageName: row.stage_name || "",
+    birthDate: row.birth_date || "",
+    roles: Array.isArray(row.roles) ? row.roles : [],
+    mbti: row.mbti || "",
+    zodiac: row.zodiac || "",
+    color: row.profile_color || "",
+    emoji: row.emoji || "",
+    preDebutSongs: Array.isArray(row.pre_debut_songs) ? row.pre_debut_songs : [],
+    stats: Array.isArray(row.stats) ? row.stats : [],
+    languages: Array.isArray(row.languages) ? row.languages : [],
+    facts: Array.isArray(row.facts) ? row.facts : [],
+    updatedAt: row.updated_at
+  };
+}
+
+function profileFor(memberId){
+  const m = memberById(memberId);
+  const p = state.profiles[memberId] || {};
+  return {
+    memberId,
+    stageName: p.stageName || m?.name || "",
+    birthDate: p.birthDate || "",
+    roles: Array.isArray(p.roles) ? p.roles : [],
+    mbti: p.mbti || "",
+    zodiac: p.zodiac || "",
+    color: p.color || m?.color || "#B0D9FA",
+    emoji: p.emoji || "",
+    preDebutSongs: Array.isArray(p.preDebutSongs) ? p.preDebutSongs : [],
+    stats: Array.isArray(p.stats) && p.stats.length ? p.stats : [
+      {name:"VOCAL",value:0},{name:"RAP",value:0},{name:"ACT",value:0}
+    ],
+    languages: Array.isArray(p.languages) ? p.languages : [],
+    facts: Array.isArray(p.facts) ? p.facts : []
+  };
+}
+
+function memberDisplayColor(memberId){
+  return profileFor(memberId).color || memberById(memberId)?.color || "#B0D9FA";
 }
 
 function mapProject(row){
@@ -259,6 +303,7 @@ function leaveWorkspace(){
   state.projects=[];
   state.tests=[];
   state.activity=[];
+  state.profiles={};
   showLogin();
 }
 
@@ -300,18 +345,22 @@ async function enterWorkspace(){
 }
 
 async function loadAllData(){
-  const [membersRes, projectsRes, testsRes, activityRes] = await Promise.all([
+  const [membersRes, profilesRes, projectsRes, testsRes, activityRes] = await Promise.all([
     sb.from("team_members").select("*").eq("is_active",true).order("created_at",{ascending:true}),
+    sb.from("team_member_profiles").select("*"),
     sb.from("team_projects").select("*").order("deadline",{ascending:true}),
     sb.from("team_project_tests").select("*").order("deadline",{ascending:true}),
     sb.from("team_activity").select("*").order("created_at",{ascending:false}).limit(80)
   ]);
 
-  for(const res of [membersRes,projectsRes,testsRes,activityRes]){
+  for(const res of [membersRes,profilesRes,projectsRes,testsRes,activityRes]){
     if(res.error) throw res.error;
   }
 
   state.members = membersRes.data.map(mapMember);
+  state.profiles = Object.fromEntries(profilesRes.data.map(row=>{
+    const p=mapProfile(row); return [p.memberId,p];
+  }));
   state.projects = projectsRes.data.map(mapProject);
   state.tests = testsRes.data.map(mapTest);
   state.activity = activityRes.data.map(mapActivity);
@@ -322,10 +371,20 @@ function subscribeRealtime(){
 
   realtimeChannel = sb
     .channel("team-space-db")
+    .on("postgres_changes",{event:"*",schema:"public",table:"team_member_profiles"},()=>refreshProfiles())
     .on("postgres_changes",{event:"*",schema:"public",table:"team_projects"},()=>refreshProjects())
     .on("postgres_changes",{event:"*",schema:"public",table:"team_project_tests"},()=>refreshTests())
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"team_activity"},()=>refreshActivity())
     .subscribe();
+}
+
+async function refreshProfiles(){
+  const {data,error}=await sb.from("team_member_profiles").select("*");
+  if(!error){
+    state.profiles=Object.fromEntries(data.map(row=>{const p=mapProfile(row);return [p.memberId,p]}));
+    if(currentMember) renderAccount();
+    render();
+  }
 }
 
 async function refreshProjects(){
@@ -356,7 +415,7 @@ async function activity(text){
 function renderAccount(){
   $("accountName").textContent=currentMember.name;
   $("accountAvatar").textContent=initials(currentMember.name);
-  $("accountAvatar").style.background=currentMember.color;
+  $("accountAvatar").style.background=memberDisplayColor(currentMember.id);
 }
 
 async function logout(){
@@ -539,25 +598,129 @@ function renderMyTasks(){
 
 function renderMembers(){
   const cards=state.members.map(m=>{
-    const joined=state.projects.filter(p=>p.memberIds.includes(m.id));
-    const assigned=state.projects.flatMap(p=>p.tasks).filter(t=>t.assigneeId===m.id);
+    const p=profileFor(m.id);
+    const joined=state.projects.filter(pr=>pr.memberIds.includes(m.id));
+    const assigned=state.projects.flatMap(pr=>pr.tasks).filter(t=>t.assigneeId===m.id);
     const complete=assigned.filter(t=>t.done).length;
+    const icon=p.emoji || initials(m.name);
     return `<article class="member-card">
-      <div class="member-accent" style="background:${m.color}"></div>
+      <div class="member-accent" style="background:${esc(p.color)}"></div>
       <div class="member-hero">
-        <div class="member-big-avatar" style="background:${m.color}">${esc(initials(m.name))}</div>
-        <div><h3>${esc(m.name)}</h3><div class="hex">${esc(m.color)}${m.isOwner?" · OWNER":""}</div></div>
+        <div class="member-big-avatar ${p.emoji?"with-emoji":""}" style="background:${esc(p.color)}">${esc(icon)}</div>
+        <div>
+          <h3>${esc(p.stageName || m.name)}</h3>
+          <div class="hex">${p.stageName && p.stageName!==m.name?esc(m.name)+" · ":""}${esc(p.color)}${m.isOwner?" · OWNER":""}</div>
+        </div>
+      </div>
+      <div class="member-profile-summary">
+        ${p.roles.slice(0,2).map(x=>`<span class="profile-mini-chip">${esc(x)}</span>`).join("")}
+        ${p.mbti?`<span class="profile-mini-chip">${esc(p.mbti)}</span>`:""}
+        ${p.zodiac?`<span class="profile-mini-chip">${esc(p.zodiac)}</span>`:""}
       </div>
       <div class="member-metrics">
         <div class="metric"><strong>${joined.length}</strong><small>PROJECTS</small></div>
         <div class="metric"><strong>${assigned.length-complete}</strong><small>OPEN</small></div>
         <div class="metric"><strong>${complete}</strong><small>DONE</small></div>
       </div>
+      <button class="ghost-btn member-profile-btn open-profile" data-id="${m.id}">View Profile</button>
     </article>`;
   }).join("");
 
-  content.innerHTML=`<div class="section"><div class="section-head"><div><h2>Members</h2><p>${state.members.length} member có quyền truy cập workspace.</p></div></div><div class="member-grid">${cards}</div></div>`;
+  content.innerHTML=`<div class="section"><div class="section-head"><div><h2>Members</h2><p>${state.members.length} member · profile có thể được chỉnh sửa bởi mọi member trong workspace.</p></div></div><div class="member-grid">${cards}</div></div>`;
+  document.querySelectorAll(".open-profile").forEach(btn=>btn.addEventListener("click",()=>openMemberProfile(btn.dataset.id)));
 }
+
+function profileBars(items,color){
+  if(!items?.length) return `<div class="profile-empty">Chưa có dữ liệu.</div>`;
+  return `<div class="profile-bars">${items.map(item=>{
+    const value=Math.max(0,Math.min(100,Number(item.value)||0));
+    return `<div class="profile-bar-row" style="--profile-color:${esc(color)}"><div class="profile-bar-name">${esc(item.name||"-")}</div><div class="profile-bar-track"><div class="profile-bar-fill" style="width:${value}%"></div></div><div class="profile-bar-value">${value}%</div></div>`;
+  }).join("")}</div>`;
+}
+
+function profileList(items){
+  if(!items?.length) return `<div class="profile-empty">Chưa có dữ liệu.</div>`;
+  return `<ul class="profile-list">${items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
+}
+
+function openMemberProfile(memberId){
+  const m=memberById(memberId); if(!m)return;
+  $("profileModalTitle").textContent=`${profileFor(memberId).stageName || m.name}`;
+  renderProfileView(memberId);
+  $("profileForm").classList.add("hidden");
+  $("profileView").classList.remove("hidden");
+  $("memberProfileModal").classList.remove("hidden");
+}
+
+function renderProfileView(memberId){
+  const m=memberById(memberId); const p=profileFor(memberId); if(!m)return;
+  $("profileView").innerHTML=`
+    <div class="profile-hero" style="--profile-color:${esc(p.color)}">
+      <div class="profile-hero-icon">${esc(p.emoji || initials(m.name))}</div>
+      <div class="profile-hero-copy">
+        <h2>${esc(p.stageName || m.name)}</h2>
+        <div class="real-name">${esc(m.name)}${m.isOwner?" · OWNER":""}</div>
+        <div class="profile-meta-row">
+          ${p.mbti?`<span class="profile-meta-chip">MBTI · ${esc(p.mbti)}</span>`:""}
+          ${p.zodiac?`<span class="profile-meta-chip">ZODIAC · ${esc(p.zodiac)}</span>`:""}
+          <span class="profile-meta-chip">COLOR · ${esc(p.color)}</span>
+          ${p.emoji?`<span class="profile-meta-chip">ICON · ${esc(p.emoji)}</span>`:""}
+        </div>
+      </div>
+      <div class="profile-view-actions"><button class="primary-btn" id="editProfileBtn">Edit Profile</button></div>
+    </div>
+    <div class="profile-sections">
+      <section class="profile-section">
+        <h3>Basic Information</h3>
+        <div class="profile-info-grid">
+          <div class="profile-info-item"><small>STAGE NAME</small><b>${esc(p.stageName||"—")}</b></div>
+          <div class="profile-info-item"><small>BIRTH DATE</small><b>${esc(p.birthDate?formatDate(p.birthDate):"—")}</b></div>
+        </div>
+        <div style="margin-top:11px">${profileList(p.roles)}</div>
+      </section>
+      <section class="profile-section">
+        <h3>Pre-debut Songs</h3>${profileList(p.preDebutSongs)}
+      </section>
+      <section class="profile-section full">
+        <h3>Stats</h3>${profileBars(p.stats,p.color)}
+      </section>
+      <section class="profile-section full">
+        <h3>Languages</h3>${profileBars(p.languages,p.color)}
+      </section>
+      <section class="profile-section full">
+        <h3>Facts</h3>${profileList(p.facts)}
+      </section>
+    </div>`;
+  $("editProfileBtn").addEventListener("click",()=>startProfileEdit(memberId));
+}
+
+function startProfileEdit(memberId){
+  const m=memberById(memberId); const p=profileFor(memberId); if(!m)return;
+  $("profileView").classList.add("hidden"); $("profileForm").classList.remove("hidden");
+  $("profileMemberSlug").value=memberId; $("profileEditingName").textContent=m.name;
+  $("profileStageName").value=p.stageName; $("profileBirthDate").value=p.birthDate;
+  $("profileMbti").value=p.mbti; $("profileZodiac").value=p.zodiac;
+  $("profileColor").value=p.color; $("profileColorPicker").value=/^#[0-9a-fA-F]{6}$/.test(p.color)?p.color:"#B0D9FA";
+  $("profileEmoji").value=p.emoji; $("profileEmojiPreview").textContent=p.emoji||"★"; $("profileEmojiPreview").style.background=p.color;
+  $("profileRoles").value=p.roles.join("\n"); $("profilePreDebut").value=p.preDebutSongs.join("\n"); $("profileFacts").value=p.facts.join("\n");
+  $("statsEditor").innerHTML=""; p.stats.forEach(x=>addBarEditorRow("statsEditor",x));
+  $("languagesEditor").innerHTML=""; p.languages.forEach(x=>addBarEditorRow("languagesEditor",x));
+}
+
+function addBarEditorRow(containerId,item={name:"",value:0}){
+  const row=document.createElement("div"); row.className="bar-editor-row";
+  const val=Math.max(0,Math.min(100,Number(item.value)||0));
+  row.innerHTML=`<input class="bar-name" placeholder="Tên" value="${esc(item.name||"")}"><input class="bar-range" type="range" min="0" max="100" value="${val}"><input class="bar-value" type="number" min="0" max="100" value="${val}"><button type="button">×</button>`;
+  const range=row.querySelector(".bar-range"), number=row.querySelector(".bar-value");
+  range.addEventListener("input",()=>number.value=range.value); number.addEventListener("input",()=>{number.value=Math.max(0,Math.min(100,Number(number.value)||0));range.value=number.value});
+  row.querySelector("button").addEventListener("click",()=>row.remove()); $(containerId).appendChild(row);
+}
+
+function collectBarRows(containerId){
+  return [...$(containerId).querySelectorAll(".bar-editor-row")].map(row=>({name:row.querySelector(".bar-name").value.trim(),value:Math.max(0,Math.min(100,Number(row.querySelector(".bar-value").value)||0))})).filter(x=>x.name);
+}
+
+function lines(id){return $(id).value.split("\n").map(x=>x.trim()).filter(Boolean)}
 
 function renderProjectTest(){
   const tests=[...state.tests].sort((a,b)=>new Date(a.deadline)-new Date(b.deadline));
@@ -880,6 +1043,51 @@ async function extendCandidate(id){
   if(error){toast(error.message,true);return}
   await activity(`gia hạn Project Test của ${t.name} thêm 7 ngày`);
 }
+
+
+$("addStatBtn").addEventListener("click",()=>addBarEditorRow("statsEditor",{name:"",value:0}));
+$("addLanguageBtn").addEventListener("click",()=>addBarEditorRow("languagesEditor",{name:"",value:0}));
+$("profileColorPicker").addEventListener("input",()=>{
+  $("profileColor").value=$("profileColorPicker").value.toUpperCase();
+  $("profileEmojiPreview").style.background=$("profileColorPicker").value;
+});
+$("profileColor").addEventListener("input",()=>{
+  const v=$("profileColor").value.trim();
+  if(/^#[0-9a-fA-F]{6}$/.test(v)){
+    $("profileColorPicker").value=v;
+    $("profileEmojiPreview").style.background=v;
+  }
+});
+$("profileEmoji").addEventListener("input",()=>$("profileEmojiPreview").textContent=$("profileEmoji").value.trim()||"★");
+$("cancelProfileEditBtn").addEventListener("click",()=>{
+  const id=$("profileMemberSlug").value; $("profileForm").classList.add("hidden"); $("profileView").classList.remove("hidden"); renderProfileView(id);
+});
+$("profileForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const memberId=$("profileMemberSlug").value; const m=memberById(memberId); if(!m)return;
+  let color=$("profileColor").value.trim().toUpperCase();
+  if(!/^#[0-9A-F]{6}$/.test(color)){toast("Color phải có dạng #RRGGBB",true);return}
+  const payload={
+    member_slug:memberId,
+    stage_name:$("profileStageName").value.trim(),
+    birth_date:$("profileBirthDate").value||null,
+    roles:lines("profileRoles"),
+    mbti:$("profileMbti").value.trim(),
+    zodiac:$("profileZodiac").value.trim(),
+    profile_color:color,
+    emoji:$("profileEmoji").value.trim(),
+    pre_debut_songs:lines("profilePreDebut"),
+    stats:collectBarRows("statsEditor"),
+    languages:collectBarRows("languagesEditor"),
+    facts:lines("profileFacts")
+  };
+  const btn=$("saveProfileBtn"); btn.disabled=true;
+  const {error}=await sb.from("team_member_profiles").upsert(payload,{onConflict:"member_slug"});
+  btn.disabled=false; if(error){toast(error.message,true);return}
+  await activity(`cập nhật profile của ${m.name}`);
+  await refreshProfiles();
+  $("profileForm").classList.add("hidden"); $("profileView").classList.remove("hidden"); renderProfileView(memberId); toast("Profile saved");
+});
 
 function closeModal(id){$(id).classList.add("hidden")}
 

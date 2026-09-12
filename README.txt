@@ -147,3 +147,34 @@ V2.1 FIX
 - Hỗ trợ URL tên: url / supabaseUrl.
 - Thêm cache-busting ?v=2.1 cho config.js và app.js.
 - Nếu vẫn lỗi: Ctrl + F5 để xóa cache.
+
+
+============================================================
+V2.2 — MEMBER PROFILE
+============================================================
+
+MỚI:
+- Vani color: #FFCDCD
+- Member Profile có:
+  Stage Name
+  Birth Date
+  Roles
+  MBTI
+  Zodiac
+  Color HEX
+  Emoji / Icon
+  Pre-debut Songs
+  Stats 0–100% (bar ngang)
+  Languages 0–100% (bar ngang)
+  Facts
+- Tất cả member đã đăng nhập đều có thể chỉnh sửa profile của mọi member.
+- Profile nằm ở bảng team_member_profiles, tách khỏi Auth User ID / Owner để tránh sửa nhầm quyền tài khoản.
+- Realtime profile.
+
+NẾU DATABASE ĐÃ CHẠY V2/V2.1:
+1. Chạy SQL: supabase_v2_2_member_profiles.sql
+2. Upload/replace: index.html, style.css, app.js
+3. GIỮ config.js hiện tại của bạn nếu nó đã có URL + key đúng.
+4. Ctrl + F5.
+
+Nếu cài mới hoàn toàn, có thể chạy supabase_team_workspace.sql.
