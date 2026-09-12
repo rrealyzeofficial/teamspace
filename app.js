@@ -440,7 +440,35 @@ $("loginForm").addEventListener("submit",async e=>{
   btn.textContent="Sign in";
 
   if(error){
-    err.textContent="Sai tài khoản/mật khẩu hoặc tài khoản chưa sẵn sàng.";
+    console.error("Supabase login error:", error);
+
+    const msg = String(error.message || "");
+    const code = String(error.code || "");
+
+    if (
+      code === "email_not_confirmed" ||
+      /email not confirmed/i.test(msg)
+    ) {
+      err.textContent = "Email của tài khoản này chưa được Confirm trong Supabase.";
+    } else if (
+      code === "invalid_credentials" ||
+      /invalid login credentials/i.test(msg)
+    ) {
+      err.textContent = "Email hoặc mật khẩu không đúng. Nếu chắc chắn đúng, hãy kiểm tra tài khoản Auth có được tạo với password hay không.";
+    } else if (
+      /failed to fetch/i.test(msg) ||
+      /network/i.test(msg)
+    ) {
+      err.textContent = "Không kết nối được Supabase. Kiểm tra Project URL, key và kết nối mạng.";
+    } else if (
+      /rate limit/i.test(msg) ||
+      /too many/i.test(msg)
+    ) {
+      err.textContent = "Đăng nhập thử quá nhiều lần. Hãy chờ một lúc rồi thử lại.";
+    } else {
+      err.textContent = `Supabase: ${msg || code || "Unknown authentication error"}`;
+    }
+
     err.classList.remove("hidden");
   }
 });
