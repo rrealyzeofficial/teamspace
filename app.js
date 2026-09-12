@@ -745,11 +745,15 @@ function renderMembers(){
         <div class="metric"><strong>${complete}</strong><small>DONE</small></div>
       </div>
       <button class="ghost-btn member-profile-btn open-profile" data-id="${m.id}">View Profile</button>
+      ${currentMember?.isOwner && m.id!==currentMember.id && !m.isOwner
+        ? `<button class="ghost-btn member-profile-btn member-delete-btn delete-member-card" data-id="${m.id}">Delete Member</button>`
+        : ""}
     </article>`;
   }).join("");
 
   content.innerHTML=`<div class="section"><div class="section-head"><div><h2>Members</h2><p>${state.members.length} member · profile có thể được chỉnh sửa bởi mọi member trong workspace.</p></div></div><div class="member-grid">${cards}</div></div>`;
   document.querySelectorAll(".open-profile").forEach(btn=>btn.addEventListener("click",()=>openMemberProfile(btn.dataset.id)));
+  document.querySelectorAll(".delete-member-card").forEach(btn=>btn.addEventListener("click",()=>deleteMember(btn.dataset.id)));
 }
 
 function profileBars(items,color){
