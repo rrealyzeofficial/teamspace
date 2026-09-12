@@ -17,8 +17,8 @@ const CFG = {
 };
 
 const configMissing = [];
-if (!CFG.url || CFG.url.includes("YOUR_SUPABASE")) configMissing.push("Project URL");
-if (!CFG.key || CFG.key.includes("YOUR_SUPABASE")) configMissing.push("Publishable/Anon Key");
+if (!CFG.url || CFG.url.includes("https://cryyraymtppuzxqeesbo.supabase.co")) configMissing.push("Project URL");
+if (!CFG.key || CFG.key.includes("sb_publishable_dlDZqyPQT4HZzvC6GU_oLg_uyiLsdeM")) configMissing.push("Publishable/Anon Key");
 
 const configured = configMissing.length === 0;
 
