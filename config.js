@@ -6,8 +6,8 @@
 // Cách khuyến nghị:
 
 window.TEAM_SUPABASE = {
-  url: "https://YOUR-PROJECT.supabase.co",
-  key: "YOUR_PUBLISHABLE_OR_ANON_KEY"
+  url: "https://cryyraymtppuzxqeesbo.supabase.co",
+  key: "sb_publishable_dlDZqyPQT4HZzvC6GU_oLg_uyiLsdeM"
 };
 
 // Nếu bạn thích tên khác, app.js V2.1 cũng chấp nhận:
